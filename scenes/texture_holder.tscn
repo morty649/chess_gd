@@ -1,0 +1,3 @@
+[gd_scene format=3 uid="uid://dvnbas7puyaqw"]
+
+[node name="TEXTURE_HOLDER" type="Sprite2D"]
