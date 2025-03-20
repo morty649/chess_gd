@@ -3,6 +3,7 @@ extends Sprite2D
 #bot moves codes
 const MAX_DEPTH = 3
 
+
 # Piece values for evaluation
 var piece_value = {
 	1: 1,   # White Pawn
@@ -336,6 +337,9 @@ func make_bot_move():
 					white_king_pos = start
 				elif piece == -6:
 					black_king_pos = start
+			if is_stalemate()&& is_in_check(white_king_pos):
+				turn.texture=you_won
+			
 
 
 
@@ -513,16 +517,28 @@ const you_let_me_win=preload("res://assets/you_let_me_win.png")
 const you_call_that_plan=preload("res://assets/you_call_that_a_plan.png")
 const winning_human_standards=preload("res://assets/winning_by_human_standards.png")
 const common_you_are_better=preload("res://assets/WhatsApp Image 2025-03-19 at 4.12.23 PM.jpeg")
+
+const you_won=preload("res://assets/you_won.png")
+const bot_won=preload("res://assets/bot_won.png")
+
+const white_in_favour=preload("res://assets/white_is_in_favour.png")
+const black_in_favour=preload("res://assets/black_in_favour.png")
 @onready var pieces = $Pieces
 @onready var dots = $Dots
 @onready var turn = $turner
 @onready var white_pieces = $CanvasLayer/white_pieces
 @onready var black_pieces = $CanvasLayer/black_pieces
+@onready var new_game_button = $"CanvasGroup/Control/new game"
+@onready var restart_button = $CanvasGroup/Control/reset_game
+@onready var one_v_one_button =$"CanvasGroup/Control/1v1"
+@onready var bot_button = $CanvasGroup/Control/bot
 #Variables 
 #-numbers : black pieces  positive : white 654(CELL_WIDTH/2 king,queen,rook,bishop,knight,pawn
 #board is of type array 
 var board : Array
 var white : bool =true
+var bot_playing=false
+var player_playing=false
 #state = false : selecting the move 
 #state = true : confirming the move
 var state : bool = false
@@ -546,6 +562,28 @@ var amount_unique:Array=[]
 
 
 func _ready():
+	new_game_button.pressed.connect(on_new_game)
+	restart_button.pressed.connect(reset_board)
+	one_v_one_button.pressed.connect(one_v_one)
+	bot_button.pressed.connect(bot_enable)
+	var white_buttons = get_tree().get_nodes_in_group("white_pieces")
+	var black_buttons = get_tree().get_nodes_in_group("black_pieces")
+	
+	for button in white_buttons:
+		button.pressed.connect(self._on_button_pressed.bind(button))
+	for button in black_buttons:
+		button.pressed.connect(self._on_button_pressed.bind(button))
+		
+func on_new_game():
+	one_v_one_button.disabled=false
+	bot_button.disabled=false
+	new_game_button.disabled=true
+	restart_button.disabled=true
+	player_playing=true
+	print("new game selected")
+	reset_board()
+
+func reset_board():
 	board.append([4,2,3,5,6,3,2,4])
 	board.append([1,1,1,1,1,1,1,1])
 	board.append([0,0,0,0,0,0,0,0])
@@ -554,24 +592,32 @@ func _ready():
 	board.append([0,0,0,0,0,0,0,0])
 	board.append([-1,-1,-1,-1,-1,-1,-1,-1])
 	board.append([-4,-2,-3,-5,-6,-3,-2,-4])
+	
 	_display_board()
-	print(turn)
-	print(TURN_WHITE)
 	
-	var white_buttons = get_tree().get_nodes_in_group("white_pieces")
-	var black_buttons = get_tree().get_nodes_in_group("black_pieces")
+func one_v_one():
+	player_playing=true
+	bot_playing=false
+	new_game_button.disabled=false
+	restart_button.disabled=false
+	reset_board()
 	
-	for button in white_buttons:
-		button.pressed.connect(self._on_button_pressed.bind(button))
-	for button in black_buttons:
-		button.pressed.connect(self._on_button_pressed.bind(button))
+func bot_enable():
+	bot_playing=true
+	player_playing=false
+	new_game_button.disabled=false
+	restart_button.disabled=false
+	reset_board()
+
+	
 
 func _input(event):
 	
-	if white&&bot_play_white || !white &&bot_play_black:
-		make_bot_move()
+	if bot_playing:
+		if white&&bot_play_white || !white &&bot_play_black:
+			make_bot_move()
 	if event is InputEventMouseButton && event.pressed && promotion_square == null:
-		print(evaluate_position())
+		
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if is_mouse_out(): 
 				print("mouse is out")
@@ -615,22 +661,30 @@ func _display_board():
 				3:holder.texture = WHITE_BISHOP
 				4:holder.texture = WHITE_ROOK
 				
-	var score=evaluate_position()
 	
-	if score>=0 and score<50:
-		turn.texture=you_call_that_plan
-	elif score>=50 and score<100:
-		turn.texture=you_are_dumb
-	elif score>100:
-		turn.texture=you_let_me_win
-	elif score<=-200:
-		turn.texture=winning_human_standards
-	elif score<=-100 and score >=-199:
-		turn.texture=common_you_are_better
-	elif score>-100 and score<=0:
-		turn.texture=brain_lag
+	if bot_playing:
+		var score=evaluate_position()
+		print(score)
+		if score>=0 and score<50:
+			turn.texture=you_call_that_plan
+		elif score>=50 and score<100:
+			turn.texture=you_are_dumb
+		elif score>100:
+			turn.texture=you_let_me_win
+		elif score<=-200:
+			turn.texture=winning_human_standards
+		elif score<=-100 and score >=-199:
+			turn.texture=common_you_are_better
+		elif score>-100 and score<=0:
+			turn.texture=brain_lag
 		
-		 
+	elif player_playing:
+		var score=evaluate_position()
+		print(score)
+		if score>=0:
+			turn.texture=white_in_favour
+		else:
+			turn.texture=black_in_favour
 		
 		
 				

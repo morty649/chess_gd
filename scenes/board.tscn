@@ -234,3 +234,46 @@ theme_override_styles/normal = SubResource("StyleBoxTexture_vn0nv")
 z_index = 79
 position = Vector2(10, 20)
 offset = Vector2(450, 50)
+
+[node name="CanvasGroup" type="CanvasGroup" parent="."]
+
+[node name="Control" type="Control" parent="CanvasGroup"]
+layout_mode = 3
+anchors_preset = 0
+offset_left = -459.0
+offset_top = -120.0
+offset_right = -282.0
+offset_bottom = 15.0
+
+[node name="1v1" type="Button" parent="CanvasGroup/Control"]
+layout_mode = 0
+offset_left = -115.0
+offset_top = 50.0
+offset_right = 47.0
+offset_bottom = 96.0
+disabled = true
+text = " 1 V 1"
+
+[node name="bot" type="Button" parent="CanvasGroup/Control"]
+offset_left = -115.0
+offset_top = 114.0
+offset_right = 47.0
+offset_bottom = 160.0
+disabled = true
+text = "BOT"
+
+[node name="reset_game" type="Button" parent="CanvasGroup/Control"]
+layout_mode = 0
+offset_left = -114.0
+offset_top = -22.0
+offset_right = 43.0
+offset_bottom = 39.0
+text = "RESET"
+
+[node name="new game" type="Button" parent="CanvasGroup/Control"]
+layout_mode = 0
+offset_left = -108.0
+offset_top = 180.0
+offset_right = 43.0
+offset_bottom = 223.0
+text = "NEW GAME"
