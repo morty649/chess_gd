@@ -1,5 +1,490 @@
 extends Sprite2D
 
+#bot moves codes
+const MAX_DEPTH = 3
+
+# Piece values for evaluation
+var piece_value = {
+	1: 1,   # White Pawn
+	2: 3,   # White Knight
+	3: 3,   # White Bishop
+	4: 5,   # White Rook
+	5: 9,   # White Queen
+	6: 0,   # White King
+	-1: -1, # Black Pawn
+	-2: -3, # Black Knight
+	-3: -3, # Black Bishop
+	-4: -5, # Black Rook
+	-5: -9, # Black Queen
+	-6: 0   # Black King
+}
+
+var PAWN_BONUS = [
+	[0, 0, 0, 0, 0, 0, 0, 0],
+	[5, 10, 10, -20, -20, 10, 10, 5],
+	[5, -5, -10, 0, 0, -10, -5, 5],
+	[0, 0, 0, 20, 20, 0, 0, 0],
+	[5, 5, 10, 25, 25, 10, 5, 5],
+	[10, 10, 20, 30, 30, 20, 10, 10],
+	[50, 50, 50, 50, 50, 50, 50, 50],
+	[0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+var KNIGHT_BONUS = [
+	[-50, -40, -30, -30, -30, -30, -40, -50],
+	[-40, -20, 0, 0, 0, 0, -20, -40],
+	[-30, 0, 10, 15, 15, 10, 0, -30],
+	[-30, 5, 15, 20, 20, 15, 5, -30],
+	[-30, 0, 15, 20, 20, 15, 0, -30],
+	[-30, 5, 10, 15, 15, 10, 5, -30],
+	[-40, -20, 0, 5, 5, 0, -20, -40],
+	[-50, -40, -30, -30, -30, -30, -40, -50]
+]
+
+var BISHOP_BONUS = [
+	[-20, -10, -10, -10, -10, -10, -10, -20],
+	[-10, 0, 0, 0, 0, 0, 0, -10],
+	[-10, 0, 5, 10, 10, 5, 0, -10],
+	[-10, 5, 5, 10, 10, 5, 5, -10],
+	[-10, 0, 10, 10, 10, 10, 0, -10],
+	[-10, 10, 10, 10, 10, 10, 10, -10],
+	[-10, 5, 0, 0, 0, 0, 5, -10],
+	[-20, -10, -10, -10, -10, -10, -10, -20]
+]
+
+var ROOK_BONUS = [
+	[0, 0, 0, 5, 5, 0, 0, 0],
+	[-5, 0, 0, 0, 0, 0, 0, -5],
+	[-5, 0, 0, 0, 0, 0, 0, -5],
+	[-5, 0, 0, 0, 0, 0, 0, -5],
+	[-5, 0, 0, 0, 0, 0, 0, -5],
+	[-5, 0, 0, 0, 0, 0, 0, -5],
+	[5, 10, 10, 10, 10, 10, 10, 5],
+	[0, 0, 0, 0, 0, 0, 0, 0]
+]
+
+var QUEEN_BONUS = [
+	[-20, -10, -10, -5, -5, -10, -10, -20],
+	[-10, 0, 0, 0, 0, 0, 0, -10],
+	[-10, 0, 5, 5, 5, 5, 0, -10],
+	[-5, 0, 5, 5, 5, 5, 0, -5],
+	[0, 0, 5, 5, 5, 5, 0, -5],
+	[-10, 5, 5, 5, 5, 5, 0, -10],
+	[-10, 0, 5, 0, 0, 0, 0, -10],
+	[-20, -10, -10, -5, -5, -10, -10, -20]
+]
+
+var KING_BONUS = [
+	[-30, -40, -40, -50, -50, -40, -40, -30],
+	[-30, -40, -40, -50, -50, -40, -40, -30],
+	[-30, -40, -40, -50, -50, -40, -40, -30],
+	[-30, -40, -40, -50, -50, -40, -40, -30],
+	[-20, -30, -30, -40, -40, -30, -30, -20],
+	[-10, -20, -20, -20, -20, -20, -20, -10],
+	[20, 20, 0, 0, 0, 0, 20, 20],
+	[20, 30, 10, 0, 0, 10, 30, 20]
+]
+
+var bot_play_white=true
+var bot_play_black=false
+
+
+func minimax(depth: int, is_maximizing: bool, alpha: float, beta: float) -> float:
+	if depth == 0 or is_game_over():
+		return evaluate_position()
+
+	var legal_moves = generate_legal_moves()
+	if is_maximizing:
+		var max_eval = -INF
+		for move in legal_moves:
+			var from_pos = move[0]
+			var to_pos = move[1]
+			var captured_piece = board[to_pos.x][to_pos.y]
+
+			make_move(from_pos, to_pos)
+			var eval = minimax(depth - 1, false, alpha, beta)
+			undo_move(from_pos, to_pos, captured_piece)
+
+			max_eval = max(max_eval, eval)
+			alpha = max(alpha, eval)
+
+			if beta <= alpha:
+				break
+
+		return max_eval
+	else:
+		var min_eval = INF
+		for move in legal_moves:
+			var from_pos = move[0]
+			var to_pos = move[1]
+			var captured_piece = board[to_pos.x][to_pos.y]
+
+			make_move(from_pos, to_pos)
+			var eval = minimax(depth - 1, true, alpha, beta)
+			undo_move(from_pos, to_pos, captured_piece)
+
+			min_eval = min(min_eval, eval)
+			beta = min(beta, eval)
+
+			if beta <= alpha:
+				break
+
+		return min_eval
+
+func get_positional_bonus(piece, position) -> int:
+	var row =int(position.y)
+	var col = int(position.x)
+
+	match piece:
+		1: # White Pawn
+			return PAWN_BONUS[row][col]
+		-1: # Black Pawn
+			return PAWN_BONUS[7 - row][col]  # Mirror the table
+		2: # White Knight
+			return KNIGHT_BONUS[row][col]
+		-2: # Black Knight
+			return KNIGHT_BONUS[7 - row][col]
+		3: # White Bishop
+			return BISHOP_BONUS[row][col]
+		-3: # Black Bishop
+			return BISHOP_BONUS[7 - row][col]
+		4: # White Rook
+			return ROOK_BONUS[row][col]
+		-4: # Black Rook
+			return ROOK_BONUS[7 - row][col]
+		5: # White Queen
+			return QUEEN_BONUS[row][col]
+		-5: # Black Queen
+			return QUEEN_BONUS[7 - row][col]
+		6: # White King
+			return KING_BONUS[row][col]
+		-6: # Black King
+			return KING_BONUS[7 - row][col]
+		_:
+			return 0
+
+func evaluate_position() -> float:
+	var score = 0.0
+	
+	for x in range(8):
+		for y in range(8):
+			var piece = board[x][y]
+			if piece != 0:
+				# Base piece value
+				score += piece_value.get(piece, 0)
+				
+				# Add positional bonus
+				score += get_positional_bonus(piece, Vector2(y, x)) 
+
+	return score
+
+
+#
+#func generate_legal_moves() -> Array:
+	#var moves_legal = []
+	#
+	#for x in range(8):
+		#for y in range(8):
+			#var piece = board[x][y]
+			#
+			## ✅ Only consider pieces belonging to the current player
+			#if piece != 0 and ((white and piece > 0) or (!white and piece < 0)):
+				#var possible_moves = get_moves(Vector2(x, y))
+				#
+				#for target in possible_moves:
+					## ✅ Simulate the move
+					#var temp = board[target.x][target.y]
+					#board[target.x][target.y] = piece
+					#board[x][y] = 0
+#
+					## ✅ Check for king safety after the move
+					#var king_pos = white_king_pos if white else black_king_pos
+					#if not is_in_check(king_pos):
+						#moves_legal.append([Vector2(x, y), target])
+					#
+					## ✅ Undo the simulation
+					#board[x][y] = piece
+					#board[target.x][target.y] = temp
+	#
+	#return moves_legal
+	
+func generate_legal_moves():
+	var legal_moves = []
+	for x in range(8):
+		for y in range(8):
+			var piece = board[x][y]
+			if (white and piece > 0) or (not white and piece < 0):
+				var possible_moves = get_moves(Vector2(x, y))
+				for target in possible_moves:
+					# Simulate the move to check if it resolves check
+					var captured_piece = board[target.x][target.y]
+					board[target.x][target.y] = piece
+					board[x][y] = 0
+					
+					var king_pos = white_king_pos if piece > 0 else black_king_pos
+					if piece == 6:
+						king_pos = target
+					if not is_in_check(king_pos):
+						legal_moves.append([Vector2(x, y), target])
+					
+					# Undo the simulated move
+					board[x][y] = piece
+					board[target.x][target.y] = captured_piece
+	return legal_moves
+
+#memorizes
+#
+## Executes a move on the board
+#func make_move(start: Vector2, target: Vector2):
+	#var piece = board[start.x][start.y]
+	#var captured_piece = board[target.x][target.y]
+	#board[target.x][target.y] = piece
+	#board[start.x][start.y] = 0
+	#
+	## Handle pawn promotion
+	#if abs(piece) == 1:
+		#if (piece == 1 and target.y == 7) or (piece == -1 and target.y == 0):
+			#board[target.x][target.y] = 5 if piece > 0 else -5
+#
+	## Update king's position if moved
+	#if piece == 6:
+		#white_king_pos = target
+	#elif piece == -6:
+		#black_king_pos = target
+#
+	## Switch turns after a successful move
+	#white = not white
+#
+#3issues
+#func make_move(start: Vector2, target: Vector2):
+	#var piece = board[start.x][start.y]
+	#board[target.x][target.y] = piece
+	#board[start.x][start.y] = 0
+	#
+	## Update king's position if moved
+	#if piece == 6:
+		#white_king_pos = target
+	#elif piece == -6:
+		#black_king_pos = target
+	#
+	## 🔥 Commit to the turn — no undo!
+	#white = not white
+
+func make_move(start: Vector2, target: Vector2):
+	var piece = board[start.x][start.y]
+	var captured_piece = board[target.x][target.y]
+	board[target.x][target.y] = piece
+	board[start.x][start.y] = 0
+	
+	# Update king's position if moved
+	if piece == 6:
+		white_king_pos = target
+	elif piece == -6:
+		black_king_pos = target
+
+	# Handle promotion
+	if abs(piece) == 1 and (target.y == 0 or target.y == 7):
+		board[target.x][target.y] = 5 if piece > 0 else -5
+	
+	# Switch turn
+	white = not white
+
+# Called when it's the bot's turn to move #3issues
+#func make_bot_move():
+	#if (white and bot_play_white) or (not white and bot_play_black):
+		#var best_move = get_best_move()
+		#if best_move!=null:
+			#var start = best_move[0]
+			#var target = best_move[1]
+			#
+			## Directly execute the chosen move
+			#make_move(start, target)
+			##memorizes
+		##elif best_move==null:
+			##if is_in_check(white_king_pos):
+				##print("white lost")
+			##elif !is_in_check(white_king_pos):
+				##print("draw")
+				##
+func make_bot_move():
+	if (white and bot_play_white) or (not white and bot_play_black):
+		var best_move = get_best_move()
+		if best_move:
+			var start = best_move[0]
+			var target = best_move[1]
+			
+			# Make the move temporarily
+			var piece = board[start.x][start.y]
+			var captured_piece = board[target.x][target.y]
+			board[target.x][target.y] = piece
+			board[start.x][start.y] = 0
+			
+			# Update king's position if needed
+			if piece == 6:
+				white_king_pos = target
+			elif piece == -6:
+				black_king_pos = target
+			
+			# Only switch turns if the move doesn't leave the king in check
+			if not is_in_check(white_king_pos if piece > 0 else black_king_pos):
+				white = not white
+			else:
+				# Undo the move if it's invalid
+				board[start.x][start.y] = piece
+				board[target.x][target.y] = captured_piece
+				if piece == 6:
+					white_king_pos = start
+				elif piece == -6:
+					black_king_pos = start
+
+
+
+
+
+func undo_move(start: Vector2, target: Vector2, captured_piece: int):
+	board[start.x][start.y] = board[target.x][target.y]
+	board[target.x][target.y] = captured_piece
+	
+	# Restore king position if necessary
+	if board[start.x][start.y] == 6:
+		white_king_pos = start
+	elif board[start.x][start.y] == -6:
+		black_king_pos = start
+	
+	# Restore turn
+	white = !white
+
+#old best move bot memorizes
+#func get_best_move() -> Array:
+	#var best_move = null
+	#var best_score = -INF if white else INF
+	#var legal_moves = generate_legal_moves()
+#
+	#for move in legal_moves:
+		#var start = move[0]
+		#var target = move[1]
+		#
+		#var piece = board[start.x][start.y]
+		#var captured_piece = board[target.x][target.y]
+		#var is_promotion = false
+		#var promoted_piece = 0
+		#
+		## Simulate the move
+		#board[target.x][target.y] = piece
+		#board[start.x][start.y] = 0
+		#
+		## Handle pawn promotion
+		#if abs(piece) == 1:  # Pawn
+			#if (piece == 1 and target.y == 7) or (piece == -1 and target.y == 0):
+				#is_promotion = true
+				#promoted_piece = 5 if piece > 0 else -5
+				#board[target.x][target.y] = promoted_piece
+		#
+		## Update king position if needed
+		#var original_king_pos = white_king_pos if piece == 6 else black_king_pos
+		#if piece == 6:
+			#white_king_pos = target
+		#elif piece == -6:
+			#black_king_pos = target
+		#
+		## Evaluate the position
+		#var score = evaluate_position()
+#
+		## Undo the move
+		#board[start.x][start.y] = piece
+		#board[target.x][target.y] = captured_piece
+		#if is_promotion:
+			#board[target.x][target.y] = captured_piece  # Restore captured piece
+		#if piece == 6:
+			#white_king_pos = original_king_pos
+		#elif piece == -6:
+			#black_king_pos = original_king_pos
+		#
+		## Choose the best move
+		#if (white and score > best_score) or (not white and score < best_score):
+			#best_score = score
+			#best_move = move
+#
+	#return best_move
+#
+
+func get_best_move():
+	var best_score = -INF if white else INF
+	var best_move = null
+
+	var all_moves = generate_legal_moves()
+	for move in all_moves:
+		var start = move[0]
+		var target = move[1]
+		
+		# Make the move temporarily
+		var piece = board[start.x][start.y]
+		var captured_piece = board[target.x][target.y]
+		board[target.x][target.y] = piece
+		board[start.x][start.y] = 0
+		
+		# Handle king position update (if needed)
+		var old_king_pos = white_king_pos if piece == 6 else black_king_pos
+		if piece == 6:
+			white_king_pos = target
+		elif piece == -6:
+			black_king_pos = target
+		
+		# Evaluate the board state
+		var score = evaluate_position()
+		
+		# 🛑 Undo ONLY during simulation
+		board[start.x][start.y] = piece
+		board[target.x][target.y] = captured_piece
+		if piece == 6:
+			white_king_pos = old_king_pos
+		elif piece == -6:
+			black_king_pos = old_king_pos
+		
+		# Choose the best move based on score
+		if white and score > best_score or not white and score < best_score:
+			best_score = score
+			best_move = move
+	
+	return best_move
+
+
+
+var bot_moving = false
+var turn_in_progress=false
+#var turn_in_progress = false
+
+
+#func sets_move(from_pos, to_pos):
+	#
+
+
+
+
+
+
+
+
+func is_game_over() -> bool:
+	# Check if the current player is in checkmate
+	if is_in_check(white_king_pos):
+		return true
+	
+	# Check if the current player is in stalemate
+	if is_stalemate():
+		return true
+	
+	# Check for insufficient material
+	if insuff_material():
+		return true
+	
+	return false
+	
+
+
+
+
+
 const Board_size = 8
 const CELL_WIDTH = 64
 const piece_move = preload("res://assets/Piece_move.png")
@@ -20,16 +505,24 @@ const WHITE_ROOK = preload("res://assets/white_rook.png")
 const TURN_BLACK = preload("res://assets/turn-black.png")
 const TURN_WHITE = preload("res://assets/turn-white.png")
 const drawn_image = WHITE_KING
+
+
+const brain_lag=preload("res://assets/brain_lag_detected.png")
+const you_are_dumb=preload("res://assets/you_are_dumb.png")
+const you_let_me_win=preload("res://assets/you_let_me_win.png")
+const you_call_that_plan=preload("res://assets/you_call_that_a_plan.png")
+const winning_human_standards=preload("res://assets/winning_by_human_standards.png")
+const common_you_are_better=preload("res://assets/WhatsApp Image 2025-03-19 at 4.12.23 PM.jpeg")
 @onready var pieces = $Pieces
 @onready var dots = $Dots
-@onready var turn = $Turn
+@onready var turn = $turner
 @onready var white_pieces = $CanvasLayer/white_pieces
 @onready var black_pieces = $CanvasLayer/black_pieces
 #Variables 
 #-numbers : black pieces  positive : white 654(CELL_WIDTH/2 king,queen,rook,bishop,knight,pawn
 #board is of type array 
 var board : Array
-var white : bool = true
+var white : bool =true
 #state = false : selecting the move 
 #state = true : confirming the move
 var state : bool = false
@@ -62,6 +555,9 @@ func _ready():
 	board.append([-1,-1,-1,-1,-1,-1,-1,-1])
 	board.append([-4,-2,-3,-5,-6,-3,-2,-4])
 	_display_board()
+	print(turn)
+	print(TURN_WHITE)
+	
 	var white_buttons = get_tree().get_nodes_in_group("white_pieces")
 	var black_buttons = get_tree().get_nodes_in_group("black_pieces")
 	
@@ -71,7 +567,11 @@ func _ready():
 		button.pressed.connect(self._on_button_pressed.bind(button))
 
 func _input(event):
+	
+	if white&&bot_play_white || !white &&bot_play_black:
+		make_bot_move()
 	if event is InputEventMouseButton && event.pressed && promotion_square == null:
+		print(evaluate_position())
 		if event.button_index == MOUSE_BUTTON_LEFT:
 			if is_mouse_out(): 
 				print("mouse is out")
@@ -115,8 +615,24 @@ func _display_board():
 				3:holder.texture = WHITE_BISHOP
 				4:holder.texture = WHITE_ROOK
 				
-	#if white : turn.texture = TURN_WHITE
-	#if !white : turn.texture = TURN_BLACK
+	var score=evaluate_position()
+	
+	if score>=0 and score<50:
+		turn.texture=you_call_that_plan
+	elif score>=50 and score<100:
+		turn.texture=you_are_dumb
+	elif score>100:
+		turn.texture=you_let_me_win
+	elif score<=-200:
+		turn.texture=winning_human_standards
+	elif score<=-100 and score >=-199:
+		turn.texture=common_you_are_better
+	elif score>-100 and score<=0:
+		turn.texture=brain_lag
+		
+		 
+		
+		
 				
 func show_options():
 	moves = get_moves(selected_piece)
@@ -206,7 +722,11 @@ func set_move(var2,var1):
 	state = false
 	#
 	if is_stalemate():
-		if white && is_in_check(white_king_pos) || !white && is_in_check(black_king_pos): print("CHECKMATE")
+		if white && is_in_check(white_king_pos) || !white && is_in_check(black_king_pos):
+			if is_in_check(white_king_pos):
+				print("white lost")
+			elif is_in_check(black_king_pos):
+				print("black lost")
 		elif !is_in_check(white_king_pos)&&white || !is_in_check(black_king_pos)&&!white:
 			print("DRAW")
 
@@ -455,7 +975,7 @@ func promote(_var : Vector2):
 	
 func _on_button_pressed(button):
 	var num_char = int(button.name.substr(0,1))
-	board[promotion_square.x][promotion_square.y] = -num_char if white else num_char
+	board[promotion_square.x][promotion_square.y] = num_char if white else -num_char
 	white_pieces.visible = false
 	black_pieces.visible =  false
 	promotion_square = null
@@ -514,7 +1034,7 @@ func is_in_check(king_pos: Vector2) -> bool:
 	return false
 	
 func is_stalemate():
-	print("is stalemate called")
+	#print("is stalemate called")
 	if white:
 		for i in range(Board_size):
 			for j in range(Board_size):

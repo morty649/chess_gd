@@ -100,13 +100,17 @@ position = Vector2(-5.61607, 6.04718)
 position = Vector2(-8.88002, -14.5857)
 
 [node name="Turn" type="Sprite2D" parent="."]
+self_modulate = Color(4.33177e-07, 0.255745, 0.364451, 1)
+z_index = 100
 z_as_relative = false
 texture_filter = 1
+position = Vector2(512, 0)
 scale = Vector2(100, 100)
 offset = Vector2(520, 50)
 
 [node name="Camera2D" type="Camera2D" parent="."]
 position = Vector2(-14.2081, 5.02946)
+zoom = Vector2(0.9, 0.9)
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 
@@ -225,3 +229,8 @@ theme_override_styles/disabled = SubResource("StyleBoxEmpty_4bs3u")
 theme_override_styles/hover = SubResource("StyleBoxTexture_8qctr")
 theme_override_styles/pressed = SubResource("StyleBoxTexture_w0dbm")
 theme_override_styles/normal = SubResource("StyleBoxTexture_vn0nv")
+
+[node name="turner" type="Sprite2D" parent="."]
+z_index = 79
+position = Vector2(10, 20)
+offset = Vector2(450, 50)
